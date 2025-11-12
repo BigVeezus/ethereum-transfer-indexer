@@ -6,6 +6,8 @@
 *.dylib
 bin/
 dist/
+main
+server
 
 # Test binary
 *.test
