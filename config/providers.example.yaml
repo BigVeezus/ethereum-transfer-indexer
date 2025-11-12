@@ -1,0 +1,30 @@
+# Ethereum RPC Provider Configuration
+# Supports multiple providers with automatic failover
+# Providers are tried in order based on weight (higher weight = tried first)
+
+providers:
+  - name: alchemy
+    url: https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY
+    weight: 10 # Higher weight = higher priority
+    maxRange: 10 # Maximum block range for eth_getLogs (free tier limit)
+    timeout: 30s # Request timeout per provider
+
+  - name: infura
+    url: https://mainnet.infura.io/v3/YOUR_PROJECT_ID
+    weight: 5
+    maxRange: 10 # Free tier limit
+    timeout: 30s
+
+  - name: backup
+    url: https://eth.llamarpc.com
+    weight: 1 # Lowest priority, used as last resort
+    maxRange: 1000 # Public RPC may have different limits
+    timeout: 30s
+
+# Circuit breaker configuration
+circuit_breaker:
+  failure_threshold: 5 # Mark provider unhealthy after N consecutive failures
+  success_threshold: 2 # Mark provider healthy after N consecutive successes
+  timeout: 60s # How long to wait before retrying unhealthy provider
+  half_open_max_calls: 3 # Max calls in half-open state before fully opening
+

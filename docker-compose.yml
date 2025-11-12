@@ -1,0 +1,93 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: ethereum-ingestion
+    ports:
+      - "8080:8080"
+    environment:
+      - ETH_RPC_URL=${ETH_RPC_URL:-http://host.docker.internal:8545}
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DB=ethereum
+      - REDIS_URI=redis://redis:6379
+      - USE_REDIS=${USE_REDIS:-true}
+      - START_BLOCK=${START_BLOCK:-0}
+      - POLL_INTERVAL=${POLL_INTERVAL:-12}
+      - SERVER_PORT=8080
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - ethereum-network
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7.0
+    container_name: ethereum-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - ethereum-network
+    restart: unless-stopped
+    command: mongod --wiredTigerCacheSizeGB 1
+
+  redis:
+    image: redis:7-alpine
+    container_name: ethereum-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ethereum-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ethereum-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    networks:
+      - ethereum-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ethereum-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - ethereum-network
+    restart: unless-stopped
+
+networks:
+  ethereum-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
